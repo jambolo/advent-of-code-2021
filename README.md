@@ -93,7 +93,7 @@ My solutions to Advent of Code 2021 written in C++. The development environment 
 |    1 |      610 |
 |    2 | PZFJHRFZ |
 
-Note: *The answer to part 2 is found visually by inspecting the ascii image output.*
+**Note**: *The answer to part 2 is found visually by inspecting the ascii image output.*
 
 ## Day 14
 
@@ -151,7 +151,7 @@ Note: *The answer to part 2 is found visually by inspecting the ascii image outp
 |    1 |          734820 |
 |    2 | 193170338541590 |
 
-Note: *Part 1 is `day21-1.cpp` and part 2 is implemented in `day21-2.cpp`.*
+**Note**: *Part 1 is `day21-1.cpp` and part 2 is implemented in `day21-2.cpp`.*
 
 ## Day 22
 
@@ -160,7 +160,20 @@ Note: *Part 1 is `day21-1.cpp` and part 2 is implemented in `day21-2.cpp`.*
 |    1 |           546724 |
 |    2 | 1346544039176841 |
 
-Note: *Part 1 is `day22-1.cpp` and part 2 is implemented in `day22-2.cpp`.*
+**Note**: *Part 1 is `day22-1.cpp` and part 2 is implemented in `day22-2.cpp`.*
+
+## Day 23
+
+I nearly gave up on this puzzle. I initially used the pathfinding class but it was too slow. I then tried to implement a depth first search with pruning and memoization, but it was even slower. Eventually with the help of Claude, I was able to fix some inefficiencies in the pathfinding implementation, reduce memory allocation costs, and improve the heuristic enough to solve part 2 in an acceptable amount of time.
+
+| Part | Answer |
+|------|--------|
+|    1 |  10607 |
+|    2 |  59071 |
+
+**Note**: *The part flag in the command line is ignored. The part is determined by setting `PART_1` in the source file.*
+
+Also note: *Part 2 takes over 20 seconds to complete when running the optimized version.*
 
 ## Day 24
 
@@ -256,4 +269,4 @@ The highest possible model number is `69914999975369` and the lowest possible mo
 |    1 |    530 |
 |    2 |    N/A |
 
-Note: *Day 25 does not have a part 2.*
+**Note**: *Day 25 does not have a part 2.*
