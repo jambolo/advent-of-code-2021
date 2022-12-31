@@ -162,6 +162,95 @@ Note: *Part 1 is `day21-1.cpp` and part 2 is implemented in `day21-2.cpp`.*
 
 Note: *Part 1 is `day22-1.cpp` and part 2 is implemented in `day22-2.cpp`.*
 
+## Day 24
+
+No code is written for day 24. The solution is found only by analysis of the input.
+
+The ALU uses `* 26`, `/ 26`, and `% 26` to manipulate base-26 numbers, represented here as a big-endian vector of digits.
+
+
+The processing of each of the model number digits is similar. One of the following functions is executed for each model digit, *d_n*. The function is selected by hard-coded constants (not shown). *z_n* is the value of the Z register after processing *d_n*. The constants *a_n*, and *b_n* are hard-coded in the input.
+
+  - `z_n = [z_n-1 | d_n + b_n]`
+  - `z_n = (z_n-1 + a_n != d_n) ? [z_n-1 >> 1 | d_n + b_n] : z_n-1 >> 1`
+
+As a result, there are 7 model number digits that increase the number of digits in *z_n* and 7 that either reduce the number of digits or keep it the same.
+
+
+```
+z_01 = [d_01 + 13]
+z_02 = [z_01 | d_02 + 10]     
+z_03 = [z_02 | d_03 +  3]     
+z_04 = (z_03[0] - 11 != d_04) ? [z_03 >> 1 | d_04 +  1] : z_03 >> 1
+z_05 = [z_04 | d_05 +  9]     
+z_06 = (z_05[0] -  4 != d_06) ? [z_05 >> 1 | d_06 +  3] : z_05 >> 1
+z_07 = [z_06 | d_07 +  5]     
+z_08 = [z_07 | d_08 +  1]     
+z_09 = [z_08 | d_09 +  0]     
+z_10 = (z_09[0] -  2 != d_10) ? [z_09 >> 1 | d_10 + 13] : z_09 >> 1
+z_11 = (z_10[0] -  5 != d_11) ? [z_10 >> 1 | d_11 +  7] : z_10 >> 1
+z_12 = (z_11[0] - 11 != d_12) ? [z_11 >> 1 | d_12 + 15] : z_11 >> 1
+z_13 = (z_12[0] - 13 != d_13) ? [z_12 >> 1 | d_13 + 12] : z_12 >> 1
+z_14 = (z_13[0] - 10 != d_14) ? [z_13 >> 1 | d_14 +  8] : z_13 >> 1
+```
+
+In order for the final value in the Z register, *z14*,  to be 0, all functions that can reduce the number of digits must do so, and all conditions must be false.
+
+```
+z_14 =
+  (d_01 + 13 - 10 != d_14) ?
+    ...
+    (d_02 + 10 - 13 != d_13) ?
+      ...
+      (d_07 +  5 - 11 != d_12) ?
+        ...
+        (d_08 +  1 -  5 != d_11) ?
+          ...
+          (d_09 +  0 -  2 != d_10) ?
+            ...
+            (d_05 +  9 -  4 != d_06) ?
+              ...
+              (d_03 - 8 != d_04) ?
+                ...
+                []
+```
+
+So, the following must be true:
+
+- d04 = d03 - 8      
+- d06 = d05 + 5
+- d10 = d09 - 2
+- d11 = d08 - 4
+- d12 = d07 - 6
+- d13 = d02 - 3
+- d14 = d01 + 3
+
+Therefore, the ranges of the digits are:
+
+| Digit | Range |
+|-------|-------|
+|    1  | 1 - 6 |
+|    2  | 4 - 9 |
+|    3  | 9     |
+|    4  | 1     |
+|    5  | 1 - 4 |
+|    6  | 6 - 9 |
+|    7  | 7 - 9 |
+|    8  | 5 - 9 |
+|    9  | 3 - 9 |
+|   10  | 1 - 7 |
+|   11  | 1 - 5 |
+|   12  | 1 - 3 |
+|   13  | 1 - 6 |
+|   14  | 4 - 9 |
+
+The highest possible model number is `69914999975369` and the lowest possible model number is `14911675311114`.
+
+| Part |     Answer     |
+|------|----------------|
+|    1 | 69914999975369 |
+|    2 | 14911675311114 |
+
 ## Day 25
 
 | Part | Answer |
