@@ -1,8 +1,6 @@
 // Advent of Code 2021
 // Day 10
 
-#include <nlohmann/json.hpp>
-
 #include <algorithm>
 #include <cstdio>
 #include <cstdint>
@@ -15,70 +13,66 @@
 #include <sstream>
 #include <vector>
 
-#include "common/expect.h"
+#include <nlohmann/json.hpp>
 
-#define PART1 1
+#include "common/expect.h"
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day10-input.txt";
+static int constexpr DAY = 10;
 
 std::map<char, int64_t> corruptionPoints{ { ')', 3 }, { ']', 57 }, { '}', 1197 }, { '>', 25137 } };
 std::map<char, int64_t> completionPoints{ { '(', 1 }, { '[', 2 }, { '{', 3 }, { '<', 4 } };
 
-static void loadInput(char const* name, std::vector<std::string> & lines);
 static int64_t checkCorruption(std::string const& line, std::vector<char>& scopes);
 static int64_t checkCompletion(std::vector<char>& scopes);
 
 int main(int argc, char** argv)
 {
-    std::vector<std::string> lines;
-    // Load the input
-    loadInput(FILE_NAME, lines);
+    std::string inputPath;
+    int part;
 
-//    std::cerr << "Input: " << json(lines) << std::endl;
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
 
-    int64_t corruptionScore = 0;
-    std::vector<int64_t> completionScores;
-    std::vector<char> scopes;
+    auto lines = load::lines(inputPath);
 
-    for (auto const& line : lines)
+    if (part == 1)
     {
-        scopes.clear();
-        int64_t corruption = checkCorruption(line, scopes);
-        corruptionScore += corruption;
-        if (corruption == 0)
+        int64_t corruptionScore = 0;
+        std::vector<int64_t> completionScores;
+        std::vector<char> scopes;
+
+        for (auto const& line : lines)
         {
-            int64_t completion = checkCompletion(scopes);
-            completionScores.push_back(completion);
+            scopes.clear();
+            int64_t corruption = checkCorruption(line, scopes);
+            corruptionScore += corruption;
         }
+        std::cout << "Answer: " << corruptionScore << std::endl;
     }
-    std::cout << "Corruption score is " << corruptionScore << std::endl;
+    else
+    {
+        int64_t corruptionScore = 0;
+        std::vector<int64_t> completionScores;
+        std::vector<char> scopes;
 
-    std::sort(completionScores.begin(), completionScores.end());
-    std::cout << "Completion score is " << completionScores[completionScores.size() / 2] << std::endl;
-
+        for (auto const& line : lines)
+        {
+            scopes.clear();
+            int64_t corruption = checkCorruption(line, scopes);
+            if (corruption == 0)
+            {
+                int64_t completion = checkCompletion(scopes);
+                completionScores.push_back(completion);
+            }
+        }
+        std::sort(completionScores.begin(), completionScores.end());
+        std::cout << "Completion score is " << completionScores[completionScores.size() / 2] << std::endl;
+    }
     return 0;
-}
-
-static void loadInput(char const * name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.emplace_back(line);
-    }
 }
 
 static int64_t checkCorruption(std::string const & line, std::vector<char> & scopes)

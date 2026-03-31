@@ -13,9 +13,12 @@
 #include <sstream>
 #include <vector>
 
+#include "common/load.h"
+#include "common/setup.h"
+
 using json = nlohmann::json;
 
-static int constexpr NUMBER_OF_DAYS = 256;
+static int constexpr DAY = 6;
 static int constexpr NUMBER_OF_AGES = 9;    // 0 - 8
 
 struct extract
@@ -40,41 +43,49 @@ std::istream& operator >> (std::istream& in, extract e)
 }
 
 static void loadAges(std::ifstream& input, std::vector<int64_t>& byAge);
+static void update(int day, std::vector<int64_t>& byAge);
 
 int main(int argc, char** argv)
 {
-    std::ifstream input("day06-input.txt");
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
+    std::ifstream input(inputPath);
     if (!input.is_open())
         exit(1);
 
     // Load picked numbers
 
+    auto ages = load::commaSeparatedIntegers(inputPath);
     std::vector<int64_t> byAge(NUMBER_OF_AGES, 0);
-    loadAges(input, byAge);
-
-//    std::cerr << "Start: (" << std::accumulate(byAge.begin(), byAge.end(), 0) << ") " << json(byAge) << std::endl;
-
-    for (int day = 0; day < NUMBER_OF_DAYS; ++day)
+    for (auto age : ages)
     {
-        int iBirth = (day + 0) % byAge.size();
-
-        // Decrement
-
-        int iReset  = (day + 7) % byAge.size();
-
-        int64_t nBirths = byAge[iBirth];
-        byAge[iReset] += nBirths;
-
-        std::vector<int64_t> byAgeAligned(byAge.size(), 0);
-        for (int i = 0; i < byAgeAligned.size(); ++i)
-        {
-            byAgeAligned[i] = byAge[(iBirth + 1 + i) % byAgeAligned.size()];
-        }
-
-//        std::cerr << "At the end of day " << day + 1 << ": (" << std::accumulate(byAge.begin(), byAge.end(), int64_t(0)) << ") " << json(byAgeAligned) << std::endl;
+        ++byAge[age];
     }
 
-    std::cout << "The number of fish after " << NUMBER_OF_DAYS << " days is " << std::accumulate(byAge.begin(), byAge.end(), int64_t(0)) << std::endl;
+    if (part == 1)
+    {
+        int const NUMBER_OF_DAYS = 80;
+        for (int day = 0; day < NUMBER_OF_DAYS; ++day)
+        {
+            update(day, byAge);
+        }
+
+        std::cout << "Answer: " << std::accumulate(byAge.begin(), byAge.end(), int64_t(0)) << std::endl;
+    }
+    else
+    {
+        int const NUMBER_OF_DAYS = 256;
+        for (int day = 0; day < NUMBER_OF_DAYS; ++day)
+        {
+            update(day, byAge);
+        }
+
+        std::cout << "Answer: " << std::accumulate(byAge.begin(), byAge.end(), int64_t(0)) << std::endl;
+    }
 
     return 0;
 }
@@ -95,4 +106,16 @@ static void loadAges(std::ifstream & input, std::vector<int64_t>& byAge)
             ++byAge[age];
         lineStream >> extract(',');
     }
+}
+
+static void update(int day, std::vector<int64_t>& byAge)
+{
+    // Which group of fish is giving birth today?
+    int iBirth = (day + 0) % byAge.size();
+
+    // Decrement
+    int iReset = (day + 7) % byAge.size();
+
+    int64_t nBirths = byAge[iBirth];
+    byAge[iReset] += nBirths;
 }

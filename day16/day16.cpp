@@ -1,17 +1,20 @@
 // Advent of Code 2021
 // Day 16
 
-#include <nlohmann/json.hpp>
-
 #include <any>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
+#include "common/load.h"
+#include "common/setup.h"
+
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day16-input.txt";
+static int constexpr DAY = 16;
 
 enum PacketType
 {
@@ -70,7 +73,6 @@ static void to_json(json& j, Packet const& packet)
     }
 }
 
-static void loadInput(char const* name, std::vector<std::string> & lines);
 static int xtoi(char c);
 static std::string convertToBinary(std::string const& hex);
 static size_t parseInt(int64_t& value, std::string const& binary, size_t start, size_t end);
@@ -82,51 +84,33 @@ static int64_t sumOfVersionNumbers(Packet const & packet);
 
 int main(int argc, char** argv)
 {
-    // Load the input
-    std::vector<std::string> lines;
-    loadInput(FILE_NAME, lines);
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
+    std::vector<std::string> lines = load::lines(inputPath);
 
     for (auto const& line : lines)
     {
-        std::cerr << "hex   : " << line << std::endl;
         std::string binary = convertToBinary(line);
-//        std::cerr << "binary: " << binary << std::endl;
 
-        size_t start = 0;
         Packet packet;
+        parsePacket(packet, binary, 0, binary.size());
 
-        start = parsePacket(packet, binary, start, binary.size());
-//        std::cerr << json(packet).dump(2) << std::endl;
-
-        int64_t sum = sumOfVersionNumbers(packet);
-        std::cout << "Sum of version numbers = " << sum << std::endl;
-
-        std::cout << "Packet evaluates to " << packet.evaluate() << std::endl;
+        if (false)
+        {
+            std::cout << "Answer: " << sumOfVersionNumbers(packet) << std::endl;
+        }
+        else
+        {
+            std::cout << "Answer: " << packet.evaluate() << std::endl;
+        }
     }
 
     return 0;
 }
-
-static void loadInput(char const * name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.emplace_back(line);
-    }
-}
-
 
 static int xtoi(char c) { return (c <= '9') ? c - '0' : ((c <= 'F') ? c - 'A' : c - 'a') + 10; }
 

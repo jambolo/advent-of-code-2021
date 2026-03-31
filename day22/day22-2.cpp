@@ -15,19 +15,15 @@
 #include <string>
 #include <vector>
 
+#include "common/load.h"
+#include "common/setup.h"
+
 using json = nlohmann::json;
 
-//#define TEST    1
-
-#if defined(TEST)
-static char constexpr FILE_NAME[] = "day22-test.txt";
-#else
-static char constexpr FILE_NAME[] = "day22-input.txt";
-#endif
+static int constexpr DAY = 22;
 
 using CubeList = std::list<Cube>;
 
-static void readFile(char const* name, std::vector<std::string>& lines);
 static void add(CubeList& cubes, Cube const& x);
 static void subtract(CubeList& cubes, Cube const& x);
 static void coalesce(CubeList& cubes);
@@ -40,9 +36,15 @@ static CubeList on;
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    part = 2;    // Override the command line parameter
+    setup::printBanner(DAY, part);
+
     // Read the input
-    std::vector<std::string> lines;
-    readFile(FILE_NAME, lines);
+    auto lines = load::lines(inputPath);
 
     std::regex regex("(on|off) x=(-?[0-9]+)..(-?[0-9]+),y=(-?[0-9]+)..(-?[0-9]+),z=(-?[0-9]+)..(-?[0-9]+)");
     for (auto const& line : lines)
@@ -71,7 +73,7 @@ int main(int argc, char** argv)
     {
         count += c.size();
     }
-    std::cout << "Number of ON cubes: " << count << std::endl;
+    std::cout << "Answer: " << count << std::endl;
     return 0;
 }
 

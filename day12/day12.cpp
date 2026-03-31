@@ -1,8 +1,6 @@
 // Advent of Code 2021
 // Day 12
 
-#include <nlohmann/json.hpp>
-
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -17,13 +15,15 @@
 #include <sstream>
 #include <vector>
 
-#include "common/expect.h"
+#include <nlohmann/json.hpp>
 
-#define PART    1
+#include "common/expect.h"
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day12-input.txt";
+static int constexpr DAY = 12;
 
 struct Node
 {
@@ -33,9 +33,11 @@ struct Node
 };
 
 
-static void loadInput(char const* name, std::vector<std::string> & lines);
 static std::shared_ptr<Node> createNode(std::string const& name);
-static void findPathToEnd(std::shared_ptr<Node> node, std::vector<std::string>& path, std::vector< std::vector<std::string>>& paths, bool twice);
+static void findPathToEnd(std::shared_ptr<Node> node,
+                          std::vector<std::string>& path,
+                          std::vector< std::vector<std::string>>& paths,
+                          bool twiceAlready);
 
 void to_json(json& j, Node const & n)
 {
@@ -73,9 +75,13 @@ std::map<std::string, std::weak_ptr<Node>> nodeMap;
 
 int main(int argc, char** argv)
 {
-    // Load the input
-    std::vector<std::string> lines;
-    loadInput(FILE_NAME, lines);
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
+    std::vector<std::string> lines = load::lines(inputPath);
 
     // Build the graph
 
@@ -105,42 +111,31 @@ int main(int argc, char** argv)
         node1->edges.push_back(node0);
     }
 
-//    std::cerr << json(nodes) << std::endl;
-
     // Depth first span of the graph from start to end
 
-    std::vector<std::string> path;
-    std::vector< std::vector<std::string>> paths;
+    if (part == 1)
+    {
+        std::vector<std::string> path;
+        std::vector< std::vector<std::string>> paths;
 
-    std::shared_ptr<Node> start = nodeMap["start"].lock();
-    findPathToEnd(start, path, paths, false);
+        std::shared_ptr<Node> start = nodeMap["start"].lock();
+        findPathToEnd(start, path, paths, true);
 
-//    for (auto const& p : paths)
-//        std::cerr << json(p) << std::endl;
+        std::cout << "Answer: " << paths.size();
+    }
+    else
+    {
+        std::vector<std::string> path;
+        std::vector< std::vector<std::string>> paths;
 
-    std::cout << paths.size() << " distinct paths found" << std::endl;
+        std::shared_ptr<Node> start = nodeMap["start"].lock();
+        findPathToEnd(start, path, paths, false);
+
+        std::cout << "Answer: " << paths.size();
+
+    }
 
     return 0;
-}
-
-static void loadInput(char const * name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.emplace_back(line);
-    }
 }
 
 static std::shared_ptr<Node> createNode(std::string const& name)
@@ -151,7 +146,10 @@ static std::shared_ptr<Node> createNode(std::string const& name)
     return node;
 }
 
-static void findPathToEnd(std::shared_ptr<Node> node, std::vector<std::string>& path, std::vector< std::vector<std::string>>& paths, bool twice)
+static void findPathToEnd(std::shared_ptr<Node> node,
+                          std::vector<std::string>& path,
+                          std::vector< std::vector<std::string>>& paths,
+                          bool twiceAlready)
 {
     path.push_back(node->name);
     if (node->name == "end")
@@ -167,16 +165,16 @@ static void findPathToEnd(std::shared_ptr<Node> node, std::vector<std::string>& 
             {
                 if (s->big)
                 {
-                    findPathToEnd(s, path, paths, twice);
+                    findPathToEnd(s, path, paths, twiceAlready);
                 }
                 else
                 {
                     int count = (int)std::count(path.begin(), path.end(), s->name);
-                    if (count < 1)
+                    if (count == 0)
                     {
-                        findPathToEnd(s, path, paths, twice);
+                        findPathToEnd(s, path, paths, twiceAlready);
                     }
-                    else if (!twice && count < 2)
+                    else if (count == 1 && !twiceAlready)
                     {
                         findPathToEnd(s, path, paths, true);
                     }

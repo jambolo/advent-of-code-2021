@@ -16,53 +16,31 @@
 #include <vector>
 
 #include "common/expect.h"
+#include "common/load.h"
+#include "common/setup.h"
 
-#define PART    1
 
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day14-input.txt";
+static int constexpr DAY = 14;
 static int constexpr NUMBER_OF_STEPS = 40;
 
-struct Pair
-{
-    int insert;    // Id of inserted symbol
-    int result[2]; // New pairs created by this rule
-};
+using Pair = std::pair<char, char>;
+using CountsBySymbol = std::map<char, int64_t>;
+using CountsByPair = std::map<Pair, int64_t>;
+using Rules = std::map<Pair, char>;
 
-void to_json(json & j, Pair const& pair)
-{
-    j["insert"] = pair.insert;
-    j["result"] = json::array({ pair.result[0], pair.result[1] });
-}
-
-using SymbolMap = std::map<char, int>;
-using Rules = std::map<std::pair<char, char>, char>;
-
-static void loadInput(char const* name, std::vector<std::string> & lines);
-static void registerSymbol(char c);
-static std::vector<int64_t> doInsertions();
-
-static std::vector<Pair> pairs;             // by pair id
-static SymbolMap symbols;                   // Maps character to id
-static std::vector<int64_t> symbolCounts;   // by symbol id
-static std::vector<int64_t> pairCounts;     // By pair id
-
-static int pairId(int s0, int s1)
-{
-    return s0 * (int)symbols.size() + s1;
-}
-
-static int symbolId(char s)
-{
-    return symbols[s];
-}
+static void doInsertions(Rules const& rules, CountsByPair& pairCounts, CountsBySymbol& symbolCounts);
 
 int main(int argc, char** argv)
 {
-    // Load the input
-    std::vector<std::string> lines;
-    loadInput(FILE_NAME, lines);
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
+    std::vector<std::string> lines = load::lines(inputPath);
 
     // Get the template
     std::string start = lines[0];
@@ -71,113 +49,86 @@ int main(int argc, char** argv)
     for (int i = 2; i < lines.size(); ++i)
     {
         std::string const& line = lines[i];
-        rules[std::pair<char, char>(line[0], line[1])] = line[6];
+        rules[Pair(line[0], line[1])] = line[6];
     }
 
-    // Register all of the symbols
+    CountsByPair pairCounts;
+    CountsBySymbol symbolCounts;
+
+    // Count all of the symbols in the starting template
     for (char c : start)
-        registerSymbol(c);
-    for (auto const& r : rules)
-    {
-        registerSymbol(r.first.first);
-        registerSymbol(r.first.second);
-        registerSymbol(r.second);
-    }
-    pairs.resize(symbols.size() * symbols.size());  // Create room for every possible pair
-    pairCounts.resize(symbols.size() * symbols.size(), 0);
-    symbolCounts.resize(symbols.size(), 0);
+        ++symbolCounts[c];
 
-    // Create the pairs from the rules
-    for (auto const& r : rules)
+    // Count all of the valid pairs in the starting template
+    for (size_t i = 0; i < start.size() - 1; ++i)
     {
-        char left = r.first.first;
-        char right = r.first.second;
-        char inserted = r.second;
-        int sLeft = symbolId(left);
-        int sRight = symbolId(right);
-        int sInserted = symbolId(inserted);
-        int p = pairId(sLeft, sRight);
-        pairs[p] = Pair{ sInserted, { pairId(sLeft, sInserted), pairId(sInserted, sRight) } };
+        Pair pair = std::make_pair(start[i], start[i + 1]);
+        auto pRule = rules.find(pair);
+        if (pRule != rules.end())
+            ++pairCounts[pair];
     }
 
-    // Process the starting template
-    for (int i = 0; i < start.size() - 1; ++i)
+    if (part == 1)
     {
-        char c0 = start[i];
-        char c1 = start[i + 1];
-        int s0 = symbolId(c0);
-        int s1 = symbolId(c1);
-        ++symbolCounts[s0];
-        ++pairCounts[pairId(s0, s1)];
-
+        static int constexpr NUMBER_OF_STEPS = 10;
+        for (int i = 0; i < NUMBER_OF_STEPS; ++i)
+        {
+            doInsertions(rules, pairCounts, symbolCounts);
+        }
     }
-    ++symbolCounts[symbolId(start.back())]; // Don't forget the last symbol
-
-    for (auto const& s : symbols)
-//        std::cerr << "  '" << char(s.first) << "': " << s.second;
-//    std::cerr << std::endl;
-//    std::cerr << "Symbols: " << json(symbols) << std::endl;
-//    std::cerr << "Symbol Counts (0): " << json(symbolCounts) << std::endl;
-//    std::cerr << "Pairs: " << json(pairCounts) << std::endl;
-
-    for (int i = 0; i < NUMBER_OF_STEPS; ++i)
+    else
     {
-        pairCounts = doInsertions();
-//        std::cerr << "Symbol Counts (" << i + 1 << "): " << json(symbolCounts) << std::endl;
-//        std::cerr << "Pairs: " << json(pairCounts) << std::endl;
+        static int constexpr NUMBER_OF_STEPS = 40;
+        for (int i = 0; i < NUMBER_OF_STEPS; ++i)
+        {
+            doInsertions(rules, pairCounts, symbolCounts);
+        }
     }
 
-    std::vector<int64_t> sorted_counts = symbolCounts;
+    std::vector<int64_t> sorted_counts;
+    sorted_counts.reserve(symbolCounts.size());
+    for (auto & entry : symbolCounts)
+        sorted_counts.push_back(entry.second);
     std::sort(sorted_counts.begin(), sorted_counts.end());
 
     int64_t result = sorted_counts.back() - sorted_counts.front();
-    std::cout << "Difference between highest and lowest count = " << result << std::endl;
+    std::cout << "Answer: " << result << std::endl;
 
     return 0;
 }
 
-static void loadInput(char const * name, std::vector<std::string>& lines)
+
+static void doInsertions(Rules const & rules, CountsByPair & pairCounts, CountsBySymbol & symbolCounts)
 {
-    std::ifstream input(name);
-    if (!input.is_open())
+    std::map<Pair, int64_t> newCounts;
+    for (auto & entry : pairCounts)
     {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
+        auto const& pair = entry.first;
+        auto count = entry.second;
+
+        // Find the rule for this pair in order to do the insertions.
+        auto pRule = rules.find(pair);
+
+        // The pair is being split up, so its count is reset to 0.
+        pairCounts[pair] = 0;
+
+        // If there is a rule for the left pair, then its count is added. Otherwise, it is ignored.
+        Pair leftPair = std::make_pair(pair.first, pRule->second);
+        auto pLeftRule = rules.find(leftPair);
+        if (pLeftRule != rules.end())
+            newCounts[leftPair] += count;
+
+        // If there is a rule for the right pair, then its count is added. Otherwise, it is ignored.
+        Pair rightPair = std::make_pair(pRule->second, pair.second);
+        auto pRightRule = rules.find(rightPair);
+        if (pRightRule != rules.end())
+            newCounts[rightPair] += count;
+
+        // The symbol being inserted is counted.
+        symbolCounts[pRule->second] += count;
     }
 
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.emplace_back(line);
-    }
-}
-
-static void registerSymbol(char c)
-{
-    static int symbolId = 0;
-
-    auto it = symbols.find(c);
-    if (it == symbols.end())
-        symbols[c] = symbolId++;
-}
-
-static std::vector<int64_t> doInsertions()
-{
-    std::vector<int64_t> new_pairCounts(pairCounts.size(), 0);
-    
-    // Reset the pair counts from th
-
-    for (int i = 0; i < pairs.size(); ++i)
-    {
-        auto const& p = pairs[i];
-        int64_t count = pairCounts[i];
-        symbolCounts[p.insert] += count;
-        new_pairCounts[p.result[0]] += count;
-        new_pairCounts[p.result[1]] += count;
-    }
-    return new_pairCounts;
+    // Update the pair counts with the new counts.
+    for (auto & entry : newCounts)
+        pairCounts[entry.first] += entry.second;
 }

@@ -2,11 +2,12 @@
 // Day 21, part 1
 
 #include <iostream>
+#include <string>
 
-#define TEST    1
-//#define PART_2  1
+#include "common/setup.h"
 
 int constexpr GOAL = 1000;
+static int constexpr DAY = 21;
 
 static int roll();
 static int move(int position, int roll);
@@ -15,6 +16,13 @@ static int rollCount = 0;
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    part = 1;    // Override the command line parameter
+    setup::printBanner(DAY, part);
+
     // Skip reading input, hardcode instead
 #if defined(TEST)
     int position1 = 4;
@@ -42,7 +50,7 @@ int main(int argc, char** argv)
 
     int loserScore = std::min(score1, score2);
 
-    std::cout << "Result: " << loserScore * rollCount << ", loser score: " << loserScore << ", rollCount: " << rollCount << std::endl;
+    std::cout << "Answer: " << loserScore * rollCount << std::endl;
 
     return 0;
 }

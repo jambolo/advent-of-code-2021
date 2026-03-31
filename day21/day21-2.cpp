@@ -4,11 +4,13 @@
 
 #include <array>
 #include <iostream>
+#include <string>
 #include <vector>
 
-//#define TEST    1
+#include "common/setup.h"
 
 static int constexpr GOAL = 21;
+static int constexpr DAY = 21;
 static int constexpr MAX_TURNS = 7;
 static int constexpr NUMBER_OF_POSITIONS = 10;
 static std::array<int, 7> constexpr rollOutcomes = { 1, 3, 6, 7, 6, 3, 1 };
@@ -32,6 +34,13 @@ State newState;
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    part = 2;    // Override the command line parameter
+    setup::printBanner(DAY, part);
+
     // Skip reading input, hardcode instead
 #if defined(TEST)
     int position1 = 4 - 1;

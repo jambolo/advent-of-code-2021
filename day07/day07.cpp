@@ -12,60 +12,68 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <limits>
+#include <numeric>
 
 #include "common/expect.h"
-
-//#define PART1 1
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
 
+static int constexpr DAY = 7;
+
 int main(int argc, char** argv)
 {
-    std::vector<int> positions;
-    std::ifstream input("day07-input.txt");
-    if (!input.is_open())
-        exit(1);
+    std::string inputPath;
+    int part;
 
-    while (!input.fail())
-    {
-        int p;
-        input >> p;
-        if (!input.fail())
-            positions.push_back(p);
-        input >> expect(',');
-    }
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
 
-//    std::cerr << json(positions) << std::endl;
+    auto positions = load::commaSeparatedIntegers(inputPath);
 
     std::sort(positions.begin(), positions.end());
 
-#if defined(PART1)
-    int best_sum = (positions.back() - positions.front()) * (int)positions.size();
-#else
-    int best_sum = (positions.back() - positions.front()) * (positions.back() - positions.front()) * (int)positions.size() / 2;
-#endif
-    int best_x = 0;
-    for (int x = positions.front(); x <= positions.back(); ++x)
+    if (part == 1)
     {
-        int sum = 0;
-        for (int p : positions)
+        int64_t best_sum = std::numeric_limits<int64_t>::max();
+        int64_t best_x = 0;
+        for (int64_t x = positions.front(); x <= positions.back(); ++x)
         {
-#if defined(PART1)
-            sum += abs(p - x);
-#else
-            int d = abs(p - x);
-            sum += d * (d + 1) / 2;
-#endif // defined(PART1)
+            int64_t sum = std::reduce(positions.begin(), positions.end(), int64_t{0}, [x](int64_t acc, int64_t p)
+            {
+                return acc + std::abs(p - x);
+            });
+            if (sum < best_sum)
+            {
+                best_x = x;
+                best_sum = sum;
+            }
         }
-        if (sum < best_sum)
-        {
-            best_x = x;
-            best_sum = sum;
-        }
-//        std::cerr << "x = " << x << ", sum = " << sum << ", best_x = " << best_x << ", best_sum = " << best_sum << std::endl;
-    }
 
-    std::cout << "best_x = " << best_x << ", best_sum = " << best_sum << std::endl;
+        std::cout << "Answer: " << best_sum << std::endl;
+    }
+    else
+    {
+        int64_t best_sum = std::numeric_limits<int64_t>::max();
+        int64_t best_x = 0;
+        for (int64_t x = positions.front(); x <= positions.back(); ++x)
+        {
+            int64_t sum = std::reduce(positions.begin(), positions.end(), int64_t{ 0 }, [x](int64_t acc, int64_t p)
+            {
+                int64_t d = abs(p - x);
+                return acc + d * (d + 1) / 2;
+            });
+            if (sum < best_sum)
+            {
+                best_x = x;
+                best_sum = sum;
+            }
+        }
+
+        std::cout << "Answer: " << best_sum << std::endl;
+    }
 
 
     return 0;

@@ -72,9 +72,9 @@ PathFinder::Path PathFinder::findPath(Node * start, Node * end)
         {
             Node * pNeighbor = edge->to;
 
-#if defined(_DEBUG)
-            validateNode(pNeighbor);
-#endif
+//#if defined(_DEBUG)
+//            validateNode(pNeighbor);
+//#endif
 
             // If the node is closed, then its minimum cost has been determined and there is no reason to revisit
             // it.

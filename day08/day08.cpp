@@ -42,10 +42,12 @@
 #include <vector>
 
 #include "common/expect.h"
-
-#define PART1 1
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
+
+static int constexpr DAY = 8;
 
 static int constexpr COUNT_0 = 6;
 static int constexpr COUNT_1 = 2;
@@ -65,75 +67,97 @@ static std::string removeEachOf(std::string s, std::string const & remove);
 
 int main(int argc, char** argv)
 {
-    int count = 0;
-    int sum = 0;
+    std::string inputPath;
+    int part;
 
-    std::ifstream input("day08-input.txt");
-    if (!input.is_open())
-        exit(1);
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
 
-    while (!input.fail())
+    auto lines = load::lines(inputPath);
+
+    if (part == 1)
     {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
+        int count = 0;
 
-        std::vector<std::string> leftNumbers;
-        std::vector<std::string> rightNumbers;
-        std::vector<std::string> codes(10);
-
-        // Parse the line
-        std::istringstream lineStream(line);
-        while (!lineStream.fail())
+        for (auto const& line : lines)
         {
-            // Parse each number and split into right and left
-            bool left = true;
+            std::vector<std::string> rightNumbers;
+
+            // Parse the line
+            std::string right = line.substr(line.find("|") + 1);
+
+            std::istringstream lineStream(right);
             while (!lineStream.fail())
             {
-                std::string p;
-                lineStream >> p;
-                if (lineStream.fail())
-                    break;
-                if (p == "|")
+                while (!lineStream.fail())
                 {
-                    left = false;
-                    continue;
-                }
-
-                std::sort(p.begin(), p.end());
-                if (left)
-                {
-                    leftNumbers.push_back(p);
-                }
-                else
-                {
+                    std::string p;
+                    lineStream >> p;
+                    if (lineStream.fail())
+                        break;
                     rightNumbers.push_back(p);
                 }
             }
+
+            // Get the counts for the line
+            count += count1478(rightNumbers);
         }
-
-        // Get the counts for the line
-        count += count1478(rightNumbers);
-
-        // Get the codes for each number
-        deduceCodes(codes, leftNumbers);
-
-//        std::cerr << "Codes: " << json(codes) << std::endl;
-
-        int value = 0;
-        for (std::string const & n : rightNumbers)
-        {
-            auto found = std::find(codes.begin(), codes.end(), n);
-            int digit = (int)std::distance(codes.begin(), found);
-            value = value * 10 + digit;
-        }
-        sum += value;
-        std::cerr << "Value: " << value << std::endl;
+        std::cout << "Answer: " << count << std::endl;
     }
-    std::cout << "1, 4, 7, 8 appear " << count << " times" << std::endl;
-    std::cout << "Sum is " << sum << std::endl;
+    else
+    {
+        int sum = 0;
+
+        for (auto const& line : lines)
+        {
+            std::vector<std::string> leftNumbers;
+            std::vector<std::string> rightNumbers;
+            std::vector<std::string> codes(10);
+
+            // Parse the line
+            std::istringstream lineStream(line);
+            while (!lineStream.fail())
+            {
+                // Parse each number and split into right and left
+                bool left = true;
+                while (!lineStream.fail())
+                {
+                    std::string p;
+                    lineStream >> p;
+                    if (lineStream.fail())
+                        break;
+                    if (p == "|")
+                    {
+                        left = false;
+                        continue;
+                    }
+
+                    std::sort(p.begin(), p.end());
+                    if (left)
+                    {
+                        leftNumbers.push_back(p);
+                    }
+                    else
+                    {
+                        rightNumbers.push_back(p);
+                    }
+                }
+            }
+
+            // Get the codes for each number
+            deduceCodes(codes, leftNumbers);
+
+            int value = 0;
+            for (std::string const& n : rightNumbers)
+            {
+                auto found = std::find(codes.begin(), codes.end(), n);
+                int digit = (int)std::distance(codes.begin(), found);
+                value = value * 10 + digit;
+            }
+            sum += value;
+        }
+        std::cout << "Sum is " << sum << std::endl;
+    }
     return 0;
 }
 

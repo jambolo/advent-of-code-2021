@@ -14,7 +14,12 @@
 #include <sstream>
 #include <vector>
 
+#include "common/load.h"
+#include "common/setup.h"
+
 using json = nlohmann::json;
+
+static int constexpr DAY = 5;
 
 struct Point
 {
@@ -49,19 +54,19 @@ void to_json(json& j, Segment const& s)
     j["to"] = s.to;
 }
 
-int countIntersections(int const * bitmap, size_t size)
+int countIntersections(std::vector<int> const & bitmap)
 {
     int count = 0;
-    for (int i = 0; i < size; ++i)
+    for (auto b : bitmap)
     {
-        if (bitmap[i] > 1)
+        if (b > 1)
             ++count;
     }
 
     return count;
 }
 
-void drawBitmap(int* bitmap, int width, int height)
+void drawBitmap(std::vector<int> const & bitmap, int width, int height)
 {
     for (int y = 0; y < height; ++y)
     {
@@ -78,17 +83,21 @@ void drawBitmap(int* bitmap, int width, int height)
 
 int main(int argc, char** argv)
 {
-    FILE* input = fopen("day05-input.txt", "r");
-    if (!input)
-        exit(1);
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
+    auto lines = load::lines(inputPath);
 
     std::vector<Segment> segments;
     Segment range{ { 0, 0 }, { 0, 0 } };
 
-    while (true)
+    for (auto const & line : lines)
     {
         Segment s;
-        int count = fscanf(input, "%d,%d -> %d,%d", &s.from.x, &s.from.y, &s.to.x, &s.to.y);
+        int count = sscanf(line.c_str(), "%d,%d -> %d,%d", &s.from.x, &s.from.y, &s.to.x, &s.to.y);
         if (count < 4)
             break;
 //        s.normalize();
@@ -100,25 +109,49 @@ int main(int argc, char** argv)
         range.to.y = std::max(range.to.y, std::max(s.from.y, s.to.y));
     }
 
-    fclose(input);
-
 //        std::cerr << "Range is " << json(range) << std::endl;
 
     // Allocate the bitmap
     size_t width = range.to.x + 1;
     size_t height = range.to.y + 1;
     size_t bitmapSize = width * height;
-    int* bitmap = new int[bitmapSize];
 
-    for (int i = 0; i < bitmapSize; ++i)
-        bitmap[i] = 0;
-
-    // Render the aligned lines
-    for (auto const& s : segments)
+    if (part == 1) 
     {
-//        std::cerr << json(s) << std::endl;
-        if (s.from.x == s.to.x || s.from.y == s.to.y)
+        std::vector<int> bitmap(bitmapSize, 0);
+
+        // Render the aligned lines
+        for (auto const& s : segments)
         {
+            //        std::cerr << json(s) << std::endl;
+            if (s.from.x == s.to.x || s.from.y == s.to.y)
+            {
+                int dx = (s.to.x > s.from.x) ? 1 : (s.to.x < s.from.x) ? -1 : 0;
+                int dy = (s.to.y > s.from.y) ? 1 : (s.to.y < s.from.y) ? -1 : 0;
+                int length = std::max(abs(s.to.x - s.from.x), abs(s.to.y - s.from.y)) + 1;
+                int x = s.from.x;
+                int y = s.from.y;
+                for (int i = 0; i < length; ++i)
+                {
+                    ++bitmap[y * width + x];
+                    x += dx;
+                    y += dy;
+                }
+                //            drawBitmap(bitmap, width, height);
+            }
+        }
+
+        int count = countIntersections(bitmap);
+        std::cout << "Answer: " << count << std::endl;
+    }
+    else
+    {
+        std::vector<int> bitmap(bitmapSize, 0);
+
+        // Render all lines
+        for (auto const& s : segments)
+        {
+            //        std::cerr << json(s) << std::endl;
             int dx = (s.to.x > s.from.x) ? 1 : (s.to.x < s.from.x) ? -1 : 0;
             int dy = (s.to.y > s.from.y) ? 1 : (s.to.y < s.from.y) ? -1 : 0;
             int length = std::max(abs(s.to.x - s.from.x), abs(s.to.y - s.from.y)) + 1;
@@ -130,37 +163,13 @@ int main(int argc, char** argv)
                 x += dx;
                 y += dy;
             }
-//            drawBitmap(bitmap, width, height);
+            //        drawBitmap(bitmap, width, height);
         }
+
+        //    drawBitmap(bitmap, width, height);
+        int count = countIntersections(bitmap);
+        std::cout << "Answer: " << count << std::endl;
     }
-
-    int count = countIntersections(bitmap, bitmapSize);
-    std::cout << "Aligned count = " << count << std::endl;
-
-    for (int i = 0; i < bitmapSize; ++i)
-        bitmap[i] = 0;
-
-    // Render all lines
-    for (auto const& s : segments)
-    {
-//        std::cerr << json(s) << std::endl;
-        int dx = (s.to.x > s.from.x) ? 1 : (s.to.x < s.from.x) ? -1 : 0;
-        int dy = (s.to.y > s.from.y) ? 1 : (s.to.y < s.from.y) ? -1 : 0;
-        int length = std::max(abs(s.to.x - s.from.x), abs(s.to.y - s.from.y)) + 1;
-        int x = s.from.x;
-        int y = s.from.y;
-        for (int i = 0; i < length; ++i)
-        {
-            ++bitmap[y * width + x];
-            x += dx;
-            y += dy;
-        }
-//        drawBitmap(bitmap, width, height);
-    }
-
-//    drawBitmap(bitmap, width, height);
-    count = countIntersections(bitmap, bitmapSize);
-    std::cout << "Unaligned count = " << count << std::endl;
 
     return 0;
 }

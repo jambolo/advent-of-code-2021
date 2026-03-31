@@ -9,11 +9,12 @@
 #include <string>
 #include <vector>
 
-#define PART 2
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day18-test.txt";
+static int constexpr DAY = 18;
 
 struct Node;
 using Number = std::shared_ptr<Node>;
@@ -30,7 +31,6 @@ struct Node
     bool isPair() const { return !isNumber(); }
 };
 
-static void readFile(char const* name, std::vector<std::string> & lines);
 static void to_json(json& j, Node const& node);
 static Number createNode(json const& j);
 static Number clone(Number const& n);
@@ -46,13 +46,17 @@ Number operator +(Number const& a, Number const& b);
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
     // Read the input
-    std::vector<std::string> lines;
-    readFile(FILE_NAME, lines);
+    auto lines = load::lines(inputPath);
 
-    // Load the numbers
+    // Load the numbers (clever: use a JSON parser to parse the input)
     NumberList numbers;
-
     for (auto const& line : lines)
     {
         json j = json::parse(line);
@@ -60,53 +64,31 @@ int main(int argc, char** argv)
         numbers.push_back(n);
     }
 
-    Number sum = numbers[0];
-    for (int i = 1; i < numbers.size(); ++i)
+    if (part == 1)
     {
-        sum = sum + numbers[i];
-//        std::cerr << json(*numbers[i]) << "->" << json(*sum) << std::endl;
+        Number sum = std::accumulate(numbers.begin() + 1, numbers.end(), numbers[0], [](Number const& a, Number const& b) { return a + b; });
+        std::cout << "Answer: " << magnitude(sum) << std::endl;
     }
-    std::cout << "Sum: " << json(*sum) << std::endl;
-    std::cout << "Magnitude: " << magnitude(sum) << std::endl;
-
-    int64_t maxM = 0;
-    for (int i = 0; i < numbers.size(); ++i)
+    else
     {
-        for (int j = 0; j < numbers.size(); ++j)
+        int64_t maxM = 0;
+        for (int i = 0; i < numbers.size(); ++i)
         {
-            if (i != j)
+            for (int j = 0; j < numbers.size(); ++j)
             {
-                Number sum = numbers[i] + numbers[j];
-                int64_t m = magnitude(sum);
-                maxM = std::max(maxM, m);
+                if (i != j)
+                {
+                    Number sum = numbers[i] + numbers[j];
+                    int64_t m = magnitude(sum);
+                    maxM = std::max(maxM, m);
+                }
             }
         }
-    }
 
-    std::cout << "Max magnitude: " << maxM << std::endl;
+        std::cout << "Answer: " << maxM << std::endl;
+    }
 
     return 0;
-}
-
-static void readFile(char const * name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        if (line[0] != '#')             // Skip my comments in the input
-            lines.emplace_back(line);
-    }
 }
 
 static void to_json(json& j, Node const& node)
@@ -144,20 +126,17 @@ Number clone(Number const& n)
 
 static void reduce(Number & n)
 {
-//    std::cerr << "reduce: " << json(*n) << std::endl;
     bool altered;
     do
     {
         altered = false;
         if (explode(n))
         {
-//            std::cerr << "explode: " << json(*n) << std::endl;
             altered = true;
             continue;
         }
         else if (split(n))
         {
-//            std::cerr << "split: " << json(*n) << std::endl;
             altered = true;
             continue;
         }

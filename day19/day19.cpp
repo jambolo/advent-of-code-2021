@@ -15,16 +15,12 @@
 #include <string>
 #include <vector>
 
+#include "common/load.h"
+#include "common/setup.h"
+
 using json = nlohmann::json;
 
-//#define TEST    1
-//#define PART_1  1
-
-#if defined(TEST)
-static char constexpr FILE_NAME[] = "day19-test.txt";
-#else
-static char constexpr FILE_NAME[] = "day19-input.txt";
-#endif
+static int constexpr DAY = 19;
 static int constexpr NUMBER_OF_ORIENTATIONS = 24;
 
 using V3i = std::array<int, 3>;
@@ -40,11 +36,6 @@ struct Scanner
     void generateAnalysisData();
 };
 
-static void readFile(char const* name, std::vector<std::string> & lines);
-#if defined(TEST)
-static void displayAllMatches();
-static void displayMatches(const Scanner& s0, int i, std::vector<size_t> const& excluded);
-#endif
 static int loadScanner(Scanner & scanner, std::vector<std::string> const& lines, int i);
 static std::pair<size_t, int> chooseScanner(Scanner const& s0, std::vector<size_t> const & excluded);
 static V3i combine(Scanner& combined, Scanner const& s1);
@@ -60,9 +51,14 @@ static std::vector<Scanner> scanners;
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
     // Read the input
-    std::vector<std::string> lines;
-    readFile(FILE_NAME, lines);
+    auto lines = load::lines(inputPath);
 
     // Initialize scanners
     bool ok = true;
@@ -75,119 +71,43 @@ int main(int argc, char** argv)
         scanners.emplace_back(std::move(scanner));
     }
 
-#if defined(TEST)
-    displayAllMatches();
-#endif
-
-#if defined(TEST)
-    std::pair<size_t, size_t> initial = { 0, 1 }; // chooseScannerPair();
-#else
     std::pair<size_t, size_t> initial = { 14, 17 };// chooseInitialScannerPair();
-#endif
 
-#if defined(TEST)
-    std::cerr << "starting with scanners: " << json(initial) << std::endl;
-#endif
     Scanner combined = scanners[initial.first];
-#if defined(TEST)
-    displayMatches(combined, (int)initial.first, { initial.first });
-#endif
     V3i offset = combine(combined, scanners[initial.second]);
     scanners[initial.second].offset = offset;
 
     std::vector<size_t> excluded = { initial.first, initial.second };
     while (excluded.size() < scanners.size())
     {
-#if defined(TEST)
-        displayMatches(combined, -1, excluded);
-#endif
         std::pair<size_t, int> match = chooseScanner(combined, excluded);
-#if defined(TEST)
-        std::cerr << "choosing scanner " << match.first << " with " << match.second << " matches" << std::endl;
-#endif
         V3i offset = combine(combined, scanners[match.first]);
         scanners[match.first].offset = offset;
         excluded.push_back(match.first);
     }
 
-    std::cout << "Number of combined beacons: " << combined.beacons.size() << std::endl;
-
-#if !defined(PART_1)
-    int maxDistance = 0;
-    for (int i = 1; i < scanners.size(); ++i)
+    if (part == 1)
     {
-        V3i const& oi = scanners[i].offset;
-        for (int j = 0; j < i; ++j)
-        {
-            V3i const& oj = scanners[j].offset;
-            int distance = std::abs(oi[0] - oj[0]) + std::abs(oi[1] - oj[1]) + std::abs(oi[2] - oj[2]);
-            if (distance > maxDistance)
-                maxDistance = distance;
-        }
+        std::cout << "Answer: " << combined.beacons.size() << std::endl;
     }
-    std::cout << "Maximum distance = " << maxDistance << std::endl;
-#endif
+    else
+    {
+        int maxDistance = 0;
+        for (int i = 1; i < scanners.size(); ++i)
+        {
+            V3i const& oi = scanners[i].offset;
+            for (int j = 0; j < i; ++j)
+            {
+                V3i const& oj = scanners[j].offset;
+                int distance = std::abs(oi[0] - oj[0]) + std::abs(oi[1] - oj[1]) + std::abs(oi[2] - oj[2]);
+                if (distance > maxDistance)
+                    maxDistance = distance;
+            }
+        }
+        std::cout << "Answer: " << maxDistance << std::endl;
+    }
 
     return 0;
-}
-
-#if defined(TEST)
-static void displayAllMatches()
-{
-    for (size_t i = 0; i < scanners.size() - 1; ++i)
-    {
-        Scanner const& s0 = scanners[i];
-        displayMatches(s0, (int)i, std::vector<size_t>());
-    }
-}
-
-static void displayMatches(const Scanner& s0, int i, std::vector<size_t> const & excluded)
-{
-    std::vector<int> const& d0 = s0.distances;
-    std::vector<V3i> const& o0 = s0.offsets;
-
-    for (size_t j = 0; j < scanners.size(); ++j)
-    {
-        if (std::find(excluded.begin(), excluded.end(), j) == excluded.end())
-        {
-            Scanner const& s1 = scanners[j];
-            std::vector<int> const& d1 = s1.distances;
-            std::vector<V3i> const& o1 = s1.offsets;
-
-            int matches = countDistanceMatches(d0, d1);
-            std::cerr << "[" << i << "," << j << "]: d=" << matches << ", o = [";
-
-            for (int orientation = 0; orientation < NUMBER_OF_ORIENTATIONS; ++orientation)
-            {
-                std::vector<V3i> orientedO1 = orient(o1, orientation);
-                int matches = countOffsetMatches(o0, orientedO1);
-                std::cerr << matches << " ";
-            }
-            std::cerr << "]" << std::endl;
-        }
-    }
-}
-#endif
-
-static void readFile(char const * name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        if (line[0] != '#')             // Skip my comments in the input
-            lines.emplace_back(line);
-    }
 }
 
 static int loadScanner(Scanner & scanner, std::vector<std::string> const& lines, int i)
@@ -238,16 +158,10 @@ static V3i combine(Scanner& s0, Scanner const& s1)
 {
     // Find the best orientation
     std::pair<int, int> best = chooseOrientation(s0, s1);
-#if defined(TEST)
-    std::cerr << "choosing orientation " << best.first << std::endl;
-#endif
 
     // Determine the location of s1 relative to s0
     std::vector<V3i> orientedS1 = orient(std::vector<V3i>(s1.beacons.begin(), s1.beacons.end()), best.first);
     V3i offset = determineScannerOffset(s0.beacons, orientedS1);
-#if defined(TEST)
-    std::cerr << "offset: " << json(offset) << std::endl;
-#endif
 
     // Offset s1 beacons relative to s0
     for (auto& v : orientedS1)
@@ -289,9 +203,6 @@ static V3i determineScannerOffset(std::set<V3i> const & beacons0, std::vector<V3
             bestOffset = e.first;
         }
     }
-#if defined(TEST)
-    std::cerr << "determineScannerOffset: " << best << " out of " << beacons0.size() << "/" << beacons1.size() << std::endl;
-#endif
     return bestOffset;
 }
 

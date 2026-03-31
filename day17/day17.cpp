@@ -1,8 +1,6 @@
 // Advent of Code 2021
 // Day 17
 
-#include <nlohmann/json.hpp>
-
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -10,11 +8,14 @@
 #include <string>
 #include <vector>
 
-#define PART 2
+#include <nlohmann/json.hpp>
+
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day17-input.txt";
+static int constexpr DAY = 17;
 
 struct Target
 {
@@ -25,113 +26,126 @@ static void to_json(json& j, Target const& t)
     j = json::array({ json::array({ t.x0, t.y0 }), json::array({ t.x1, t.y1 }) });
 }
 
-static void loadInput(char const* name, std::vector<std::string> & lines);
 static Target extractTarget(std::string const & line);
 static void step(int& x, int& y, int& vX, int& vY);
 
 int main(int argc, char** argv)
 {
-    // Load the input
-    std::vector<std::string> lines;
-    loadInput(FILE_NAME, lines);
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
+    std::string input = load::string(inputPath);
 
     // Get the location and size of the target
 
-    Target target = extractTarget(lines[0]);
-//    std::cerr << "Target: " << json(target) << std::endl;
+    Target target = extractTarget(input);
 
-    // Compute the range of initial x velocities
-    int minVx0 = 1;
-    while (minVx0 * (minVx0 + 1) / 2 < target.x0)
-        ++minVx0;
-#if PART == 1
-    int maxVx0 = minVx0;
-    while (maxVx0 * (maxVx0 + 1) / 2 < target.x1)
-        ++maxVx0;
-#else
-    int maxVx0 = target.x1;
-#endif
-
-//    std::cerr << "minVx0 = " << minVx0 << std::endl;
-//    std::cerr << "maxVx0 = " << maxVx0 << std::endl;
-
-    // Compute the range of initial y velocities
-    int maxVy0 = std::max(std::max(abs(target.y0), abs(target.y1) ), abs(target.y1 - target.y0));
-    int minVy0 = std::min(1, target.y0);
-
-//    std::cerr << "minVy0 = " << minVy0 << std::endl;
-//    std::cerr << "maxVy0 = " << maxVy0 << std::endl;
-
-    // Do the simulation for all values of vX0 and save the highest y
-
-    int maxY = target.y0;
-    int count = 0;
-
-    for (int vX0 = minVx0; vX0 <= maxVx0; ++vX0)
+    if (part == 1)
     {
-        int vY0 = minVy0;
+        // The minimum x velocity is the lowest vx0 such that vx slows to 0 when x >= target.x0
+        int minVx0 = static_cast<int>(std::ceil((std::sqrt(1.0 + 8.0 * target.x0) - 1.0) / 2.0));
 
-        while (vY0 <= maxVy0)
+        // The maximum height can be reached when vx slows to 0 before x > target.x1
+        int maxVx0 = static_cast<int>(std::floor((std::sqrt(1.0 + 8.0 * target.x1) - 1.0) / 2.0));
+
+        // When the probe returns to y = 0, v = -vy0, so avoid overshooting on the next step
+        int maxVy0 = abs(target.y0);
+
+        // Has to be at least 1 to get a positive height
+        int minVy0 = 1;
+
+        int maxY = 0;
+
+        for (int vX0 = minVx0; vX0 <= maxVx0; ++vX0)
         {
-            int vX = vX0;
-            int vY = vY0;
-            int x = 0;
-            int y = 0;
-            int peak = (vY >= 0) ? (vY * (vY + 1 )) / 2 : 0;
-//            std::cerr << "[" << vX0 << ", " << vY0 << "] ";
-            while (true)
+            for (int vY0 = minVy0; vY0 <= maxVy0; ++vY0)
             {
-                if (x >= target.x0 && x <= target.x1 && y >= target.y0 && y <= target.y1)
+                int vX = vX0;
+                int vY = vY0;
+                int x = 0;
+                int y = 0;
+                int peak = (vY0 * (vY0 + 1)) / 2;
+                while (true)
                 {
-                    // Hit
-//                    std::cerr << "Hit: [" << x << ", " << y << "], peak is " << peak << std::endl;
-                    maxY = std::max(maxY, peak);
-                    ++count;
-                    break;
+                    if (x >= target.x0 && x <= target.x1 && y >= target.y0 && y <= target.y1)
+                    {
+                        // Hit
+                        maxY = std::max(maxY, peak);
+                        break;
+                    }
+                    else if (y < target.y0 || x > target.x1)
+                    {
+                        // Miss
+                        break;
+                    }
+                    step(x, y, vX, vY);
                 }
-                else if (y < target.y0 || x > target.x1)
-                {
-                    // Miss
-//                    std::cerr << "Miss" << std::endl;
-                    break;
-                }
-                step(x, y, vX, vY);
             }
-            ++vY0;
         }
+
+        std::cout << "Answer: " << maxY << std::endl;
+    }
+    else
+    {
+        // The minimum x velocity is the lowest vx0 such that vx slows to 0 when x >= target.x0
+        int minVx0 = static_cast<int>(std::ceil((std::sqrt(1.0 + 8.0 * target.x0) - 1.0) / 2.0));
+
+        // The maximum x velocity must avoid overshooting the target on the first step
+        int maxVx0 = target.x1;
+
+        // When the probe returns to y = 0, v = -vy0, so avoid overshooting on the next step
+        int maxVy0 = abs(target.y0);
+
+        // The minimum y velocity must avoid overshooting the target on the first step
+        int minVy0 = target.y0; // note this is negative
+
+        int maxY = 0;
+        int count = 0;
+        for (int vX0 = minVx0; vX0 <= maxVx0; ++vX0)
+        {
+            for (int vY0 = minVy0; vY0 <= maxVy0; ++vY0)
+            {
+                int vX = vX0;
+                int vY = vY0;
+                int x = 0;
+                int y = 0;
+                while (true)
+                {
+                    if (x >= target.x0 && x <= target.x1 && y >= target.y0 && y <= target.y1)
+                    {
+                        // Hit
+                        ++count;
+                        break;
+                    }
+                    else if (y < target.y0 || x > target.x1)
+                    {
+                        // Miss
+                        break;
+                    }
+                    step(x, y, vX, vY);
+                }
+            }
+        }
+
+        std::cout << "Answer: " << count << std::endl;
     }
 
-    std::cout << "Highest peak: " << maxY << std::endl;
-    std::cout << "Number of successful tries: " << count << std::endl;
 
     return 0;
 }
 
-static void loadInput(char const * name, std::vector<std::string>& lines)
+static Target extractTarget(std::string const& s)
 {
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.emplace_back(line);
-    }
-}
-
-static Target extractTarget(std::string const& line)
-{
+    // Trim the line
+    size_t start = s.find_first_not_of(" \t\r\n");
+    size_t end = s.find_last_not_of(" \t\r\n");
+    std::string trimmed = (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
     std::regex pattern("target area: x=(-?[0-9]+)..(-?[0-9]+), y=(-?[0-9]+)..(-?[0-9]+)");
     std::smatch match;
-    bool found = std::regex_match(line, match, pattern);
+    bool found = std::regex_match(trimmed, match, pattern);
     if (!found)
         throw std::runtime_error("regex failed");
 

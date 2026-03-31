@@ -14,13 +14,18 @@
 #include <sstream>
 #include <vector>
 
+#include "../common/setup.h"
+
 using json = nlohmann::json;
+
+static int constexpr DAY = 4;
 
 using Board = std::array<std::array<int, 5>, 5>;
 
 static void readPicks(std::ifstream& input, std::vector<int>& picks);
 static void loadBoard(std::ifstream& input, Board & board);
 static bool playBoard(Board & board, int pick);
+static int score(Board const& board, int lastPick);
 
 struct extract
 {
@@ -45,11 +50,17 @@ std::istream& operator >> (std::istream& in, extract e)
 
 int main(int argc, char ** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
     std::string empty; // for skipping lines
 
     // Read the file
 
-    std::ifstream input("day04-input.txt");
+    std::ifstream input(inputPath);
     if (!input.is_open())
         exit(1);
 
@@ -78,48 +89,48 @@ int main(int argc, char ** argv)
     //    std::cerr << json(board) << std::endl;
     //}
 
-    // Play the game
-
-    bool bingo = false;
-    for (int pick : picks)
+    if (part == 1)
     {
-        auto pB = boards.begin();
-        while (pB != boards.end())
+        bool bingo = false;
+        for (int pick : picks)
         {
-            Board& board = *pB;
-
-            bingo = playBoard(board, pick);
-            if (bingo)
+            for (auto & board : boards)
             {
-                int unmarkedSum = 0;
-                // Score it
-                for (int i = 0; i < 5; ++i)
+                bingo = playBoard(board, pick);
+                if (bingo)
                 {
-                    for (int j = 0; j < 5; ++j)
-                    {
-                        if (board[i][j] >= 0)
-                            unmarkedSum += board[i][j];
-                    }
+                    std::cerr << "Answer: " << score(board, pick) << std::endl;
+                    break;
                 }
-
-                // Print the results
-                std::cerr << "Winning pick is " << pick << std::endl;
-                std::cerr << "Unmarked sum is " << unmarkedSum << std::endl;
-                std::cerr << "Product is " << pick * unmarkedSum << std::endl;
-
-                //for (auto const& board : boards)
-                //{
-                //    std::cerr << json(board) << std::endl;
-                //}
-
-                pB = boards.erase(pB);
             }
-            else
+            if (bingo)
+                break;
+        }
+    }
+    else
+    {
+        int lastScore = 0;
+        for (int pick : picks)
+        {
+            auto pB = boards.begin();
+            while (pB != boards.end())
             {
-                ++pB;
+                Board& board = *pB;
+
+                bool bingo = playBoard(board, pick);
+                if (bingo)
+                {
+                    lastScore = score(board, pick);
+                    // Remove the board from the list of active boards
+                    pB = boards.erase(pB);
+                }
+                else
+                {
+                    ++pB;
+                }
             }
         }
-
+        std::cerr << "Answer: " << lastScore << std::endl;
     }
 }
 
@@ -195,4 +206,19 @@ static bool playBoard(Board & board, int pick)
     }
 
     return false;
+}
+
+static int score(Board const & board, int lastPick)
+{
+    int unmarkedSum = 0;
+    for (int i = 0; i < 5; ++i)
+    {
+        for (int j = 0; j < 5; ++j)
+        {
+            if (board[i][j] >= 0)
+                unmarkedSum += board[i][j];
+        }
+    }
+
+    return unmarkedSum * lastPick;
 }

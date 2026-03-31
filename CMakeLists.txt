@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required (VERSION 3.14)
 project(AdventOfCode-2021 CXX)
 
 option(BUILD_SHARED_LIBS "Build libraries as DLLs" FALSE)
@@ -18,7 +18,23 @@ add_definitions(
 
 # Common external libraries
 
-find_package(nlohmann_json REQUIRED)
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
+include(FetchContent)
+
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
+FetchContent_MakeAvailable(json)
+
+FetchContent_Declare(
+    cli11_proj
+    QUIET
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG v2.6.2
+)
+
+FetchContent_MakeAvailable(cli11_proj)
 
 # Libraries
 

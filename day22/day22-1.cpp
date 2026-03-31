@@ -14,15 +14,14 @@
 #include <string>
 #include <vector>
 
+#include "common/load.h"
+#include "common/setup.h"
+
 using json = nlohmann::json;
 
-//#define TEST    1
+static int constexpr DAY = 22;
 
-#if defined(TEST)
-static char constexpr FILE_NAME[] = "day22-test.txt";
-#else
-static char constexpr FILE_NAME[] = "day22-input.txt";
-#endif
+//#define TEST    1
 
 
 struct Step
@@ -33,15 +32,19 @@ struct Step
 
 void to_json(json& j, Step const& s);
 
-static void readFile(char const* name, std::vector<std::string>& lines);
-
 std::array<std::array<std::array<bool, 101>, 101>, 101> reactor;
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    part = 1;    // Override the command line parameter
+    setup::printBanner(DAY, part);
+
     // Read the input
-    std::vector<std::string> lines;
-    readFile(FILE_NAME, lines);
+    auto lines = load::lines(inputPath);
 
     // Parse the lines
     std::vector<Step> steps;
@@ -98,28 +101,8 @@ int main(int argc, char** argv)
         }
     }
 
-    std::cout << "Number of ON cubes: " << count << std::endl;
+    std::cout << "Answer: " << count << std::endl;
     return 0;
-}
-
-static void readFile(char const* name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.push_back(line);
-    }
 }
 
 void to_json(json& j, Step const& s)

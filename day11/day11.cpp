@@ -1,8 +1,6 @@
 // Advent of Code 2021
 // Day 11
 
-#include <nlohmann/json.hpp>
-
 #include <algorithm>
 #include <cstdio>
 #include <cstdint>
@@ -15,133 +13,86 @@
 #include <sstream>
 #include <vector>
 
-#include "common/expect.h"
+#include <nlohmann/json.hpp>
 
-#define PART    2
+#include "common/expect.h"
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day11-input.txt";
+static int constexpr DAY = 11;
 static int constexpr NUMBER_OF_STEPS = 100;
 static int constexpr WIDTH = 10;
 static int constexpr HEIGHT = 10;
 static int constexpr FLASHED = WIDTH * HEIGHT * WIDTH * HEIGHT + 1; // Sentinel value for cells that have flashed
 
-static void loadInput(char const* name, std::vector<std::string> & lines);
-static void bumpCell(int& cell);
-static void bumpNeighbors(std::array<std::array<int, WIDTH>, HEIGHT>& map, int r, int c);
-static void printMap(std::array<std::array<int, WIDTH>, HEIGHT> const & map);
+using Map = std::array<std::array<int, WIDTH>, HEIGHT>;
 
+static void bumpCell(int& cell);
+static void bumpNeighbors(Map& map, int r, int c);
+static void printMap(Map const & map);
+static void bumpEnergy(Map& map);
+static int propagateFlashes(Map& map);
+static int resetFlashes(Map& map);
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
     // Load the input
-    std::vector<std::string> lines;
-    loadInput(FILE_NAME, lines);
-
-    if (lines.size() != HEIGHT)
-        throw std::runtime_error("Heigth mismatch");
-
-//    std::cerr << "Input: " << json(lines) << std::endl;
+    std::vector<std::string> lines = load::lines(inputPath);
 
     // Build the map
-    std::array<std::array<int, WIDTH>, HEIGHT> map;
+    Map map;
     for (int r = 0; r < HEIGHT; ++r)
         for (int c = 0; c < WIDTH; ++c)
             map[r][c] = lines[r][c] - '0';
 
-//    std::cerr << "Map: " << json(map) << std::endl;
-
-    // Go
-#if PART == 1
-    int nFlashed = 0;
-    for (int step = 0; step < NUMBER_OF_STEPS; ++step)
-#else
-    int step = 1;
-    while (true)
-#endif
+    if (part == 1)
     {
-        // Bump the energy level
-        for (int r = 0; r < HEIGHT; ++r)
-            for (int c = 0; c < WIDTH; ++c)
-                map[r][c] += 1;
-
-        // Flash
-        bool flashed;
-        do
+        int nFlashed = 0;
+        for (int step = 0; step < NUMBER_OF_STEPS; ++step)
         {
-            flashed = false;    // Nobody has flashed yet
+            // Bump the energy level
+            bumpEnergy(map);
 
-            for (int r = 0; r < HEIGHT; ++r)
-            {
-                for (int c = 0; c < WIDTH; ++c)
-                {
-                    if (map[r][c] >= 10 && map[r][c] != FLASHED)
-                    {
-                        map[r][c] = FLASHED;
-#if PART == 1
-                        ++nFlashed;
-#endif
-                        bumpNeighbors(map, r, c);
-                        flashed = true;
-                    }
-                }
-            }
-        } while (flashed);
+            // Flash
+            nFlashed += propagateFlashes(map);
 
-        // Reset flashed cells
-#if PART == 2
-        int nFlashedInOneStep = 0;
-#endif
-        for (int r = 0; r < HEIGHT; ++r)
-        {
-            for (int c = 0; c < WIDTH; ++c)
-            {
-                if (map[r][c] == FLASHED)
-                {
-                    map[r][c] = 0;
-#if PART == 2
-                    ++nFlashedInOneStep;
-#endif
-                }
-            }
+            // Reset flashed cells
+            resetFlashes(map);
         }
-#if PART == 2
-        if (nFlashedInOneStep == WIDTH * HEIGHT)
-        {
-            std::cout << "Synchronized in step " << step << std::endl;
-            break;
-        }
-        ++step;
-#endif
-//        printMap(map);
+
+        std::cout << nFlashed << " cells flashed." << std::endl;
     }
+    else
+    {
+        int step = 1;
+        while (true)
+        {
+            // Bump the energy level
+            bumpEnergy(map);
 
-#if PART == 1
-    std::cout << nFlashed << " cells flashed." << std::endl;
-#endif
+            // Flash
+            propagateFlashes(map);
+
+            // Reset flashed cells
+            int nFlashedInOneStep = resetFlashes(map);
+            if (nFlashedInOneStep == WIDTH * HEIGHT)
+            {
+                std::cout << "Answer: " << step << std::endl;
+                break;
+            }
+            ++step;
+        }
+    }
 
     return 0;
-}
-
-static void loadInput(char const * name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.emplace_back(line);
-    }
 }
 
 static void bumpCell(int& cell)
@@ -150,7 +101,7 @@ static void bumpCell(int& cell)
         ++cell;
 }
 
-static void bumpNeighbors(std::array<std::array<int, WIDTH>, HEIGHT>& map, int r, int c)
+static void bumpNeighbors(Map& map, int r, int c)
 {
     if (r > 0)
     {
@@ -176,7 +127,7 @@ static void bumpNeighbors(std::array<std::array<int, WIDTH>, HEIGHT>& map, int r
     }
 }
 
-void printMap(std::array<std::array<int, WIDTH>, HEIGHT> const& map)
+void printMap(Map const& map)
 {
     for (int r = 0; r < HEIGHT; ++r)
     {
@@ -193,4 +144,54 @@ void printMap(std::array<std::array<int, WIDTH>, HEIGHT> const& map)
         std::cerr << row << std::endl;
     }
     std::cerr << std::endl;
+}
+
+static void bumpEnergy(Map& map)
+{
+    for (int r = 0; r < HEIGHT; ++r)
+        for (int c = 0; c < WIDTH; ++c)
+            map[r][c] += 1;
+}
+
+static int propagateFlashes(Map& map)
+{
+    bool flashed;
+    int nFlashed = 0;
+    do
+    {
+        flashed = false;    // Nobody has flashed yet
+
+        for (int r = 0; r < HEIGHT; ++r)
+        {
+            for (int c = 0; c < WIDTH; ++c)
+            {
+                if (map[r][c] >= 10 && map[r][c] != FLASHED)
+                {
+                    map[r][c] = FLASHED;
+                    ++nFlashed;
+                    bumpNeighbors(map, r, c);
+                    flashed = true;
+                }
+            }
+        }
+    } while (flashed);
+
+    return nFlashed;
+}
+
+static int resetFlashes(Map& map)
+{
+    int nFlashed = 0;
+    for (int r = 0; r < HEIGHT; ++r)
+    {
+        for (int c = 0; c < WIDTH; ++c)
+        {
+            if (map[r][c] == FLASHED)
+            {
+                map[r][c] = 0;
+                ++nFlashed;
+            }
+        }
+    }
+    return nFlashed;
 }

@@ -13,33 +13,26 @@
 #include <string>
 #include <vector>
 
+#include "common/load.h"
+#include "common/setup.h"
+
 using json = nlohmann::json;
 
-//#define TEST    1
-#define PART_1  1
+static int constexpr DAY = 25;
 
-#if defined(TEST)
-static char constexpr FILE_NAME[] = "day25-test.txt";
-#else
-static char constexpr FILE_NAME[] = "day25-input.txt";
-#endif
-
-#if defined(TEST)
-static size_t constexpr WIDTH   = 10;
-static size_t constexpr HEIGHT  =  9;
-#else
 static size_t constexpr WIDTH   = 139;
 static size_t constexpr HEIGHT  = 137;
-#endif
-
-static void readFile(char const* name, std::vector<std::string> & lines);
-static void printMap(std::vector<std::string> const& map, int i);
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
     // Read the input
-    std::vector<std::string> lines;
-    readFile(FILE_NAME, lines);
+    auto lines = load::lines(inputPath);
 
     int iterations = 0;
     int moveCount;
@@ -88,34 +81,7 @@ int main(int argc, char** argv)
         ++iterations;
     } while (moveCount > 0);
 
-    std::cout << "Count = " << iterations << std::endl;
+    std::cout << "Answer: " << iterations << std::endl;
 
     return 0;
-}
-
-static void readFile(char const * name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.push_back(line);
-    }
-}
-
-static void printMap(std::vector<std::string> const& map, int i)
-{
-    std::cout << "Iteration: " << i << std::endl;
-    for (auto const& line : map)
-        std::cout << line << std::endl;
 }

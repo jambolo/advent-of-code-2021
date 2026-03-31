@@ -1,8 +1,6 @@
 // Advent of Code 2021
 // Day 9
 
-#include <nlohmann/json.hpp>
-
 #include <algorithm>
 #include <cstdio>
 #include <cstdint>
@@ -10,102 +8,100 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <numeric>
 #include <set>
 #include <string>
 #include <sstream>
 #include <vector>
 
-#include "common/expect.h"
+#include <nlohmann/json.hpp>
 
-#define PART1 1
+#include "common/expect.h"
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day09-input.txt";
+static int constexpr DAY = 9;
 static int constexpr WIDTH = 100;
 static int constexpr HEIGHT = 100;
 
-static void loadInput(std::array<std::array<int, WIDTH>, HEIGHT> & heights);
-static bool isLowPoint(std::array<std::array<int, WIDTH>, HEIGHT> const& heights, int r, int c);
-static int fillBasin(std::array<std::array<int, WIDTH>, HEIGHT> & heights, int r, int c);
+using HeightMap = std::array<std::array<int, WIDTH>, HEIGHT>;
+
+static HeightMap buildMap(std::vector<std::string> const & lines);
+static bool isLowPoint(HeightMap const& heights, int r, int c);
+static int fillBasin(HeightMap & heights, int r, int c);
 int main(int argc, char** argv)
 {
-    std::array<std::array<int, WIDTH>, HEIGHT> heights;
+    std::string inputPath;
+    int part;
 
-    // Load the input
-    loadInput(heights);
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
 
-    std::vector<std::pair<int, int>> lows;
+    auto lines = load::lines(inputPath);
 
-    // Find the low points
-    for (int r = 0; r < HEIGHT; ++r)
+    HeightMap heights = buildMap(lines);
+
+    if (part == 1)
     {
-        for (int c = 0; c < WIDTH; ++c)
+        std::vector<std::pair<int, int>> lows;
+
+        // Find the low points
+        for (int r = 0; r < HEIGHT; ++r)
         {
-            if (isLowPoint(heights, r, c))
-                lows.emplace_back(std::make_pair(r, c));
-        }
-    }
-
-//    std::cerr << "Lows: " << json(lows) << std::endl;
-
-    // Sum the risk levels
-
-    int risk = 0;
-    for (auto const& low : lows)
-    {
-        risk += heights[low.first][low.second] + 1;
-    }
-
-    std::cout << "Sum of risk levels = " << risk << std::endl;
-
-    // Find and fill the basins
-    std::vector<int> basinSizes;
-
-    for (int r = 0; r < HEIGHT; ++r)
-    {
-        for (int c = 0; c < WIDTH; ++c)
-        {
-            if (heights[r][c] < 9)
+            for (int c = 0; c < WIDTH; ++c)
             {
-                int size = fillBasin(heights, r, c);
-                basinSizes.push_back(size);
+                if (isLowPoint(heights, r, c))
+                    lows.emplace_back(std::make_pair(r, c));
             }
         }
+
+        int risk = std::reduce(lows.begin(), lows.end(), 0, [heights](int acc, std::pair<int, int> x)
+            {
+                return acc + heights[x.first][x.second] + 1;
+            });
+
+        std::cout << "Answer: " << risk << std::endl;
     }
-
-    std::sort(basinSizes.begin(), basinSizes.end());
-//    std::cerr << "Basin sizes: " << json(basinSizes) << std::endl;
-
-    int64_t result = 1;
-    for (auto p = basinSizes.rbegin(); p != basinSizes.rbegin() + 3; ++p)
+    else
     {
-        result *= (int64_t)*p;
+        // Find and fill the basins
+        std::vector<int> basinSizes;
+
+        for (int r = 0; r < HEIGHT; ++r)
+        {
+            for (int c = 0; c < WIDTH; ++c)
+            {
+                if (heights[r][c] < 9)
+                {
+                    int size = fillBasin(heights, r, c);
+                    basinSizes.push_back(size);
+                }
+            }
+        }
+
+        std::sort(basinSizes.begin(), basinSizes.end());
+
+//        int64_t result = 1;
+//        for (auto p = basinSizes.rbegin(); p != basinSizes.rbegin() + 3; ++p)
+//        {
+//            result *= (int64_t)*p;
+//        }
+
+        int64_t result = std::accumulate(basinSizes.rbegin(), basinSizes.rbegin() + 3, (int64_t)1, std::multiplies<int64_t>{});
+        std::cout << "Product of 3 biggest basin sizes is " << result << std::endl;
     }
-    
-    std::cout << "Product of 3 biggest basin sizes is " << result << std::endl;
 
     return 0;
 }
 
-static void loadInput(std::array<std::array<int, WIDTH>, HEIGHT> & heights)
+static HeightMap buildMap(std::vector<std::string> const & lines)
 {
-    std::ifstream input(FILE_NAME);
-    if (!input.is_open())
+    HeightMap heights;
+    size_t r = 0;
+    for (auto const& line : lines)
     {
-        std::cerr << "Unable to open for reading '" << FILE_NAME << "'" << std::endl;
-        exit(1);
-    }
-
-    int r = 0;
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-
         if (line.size() != WIDTH)
             throw std::runtime_error("Size of a line is not equal to WIDTH.");
 
@@ -118,10 +114,10 @@ static void loadInput(std::array<std::array<int, WIDTH>, HEIGHT> & heights)
     if (r != HEIGHT)
         throw std::runtime_error("Height of the array is not equal to HEIGHT.");
 
-//    std::cerr << "Heights: " << json(heights) << std::endl;
+    return heights;
 }
 
-bool isLowPoint(std::array<std::array<int, WIDTH>, HEIGHT> const& heights, int r, int c)
+bool isLowPoint(HeightMap const& heights, int r, int c)
 {
     int h = heights[r][c];
 
@@ -136,7 +132,7 @@ bool isLowPoint(std::array<std::array<int, WIDTH>, HEIGHT> const& heights, int r
     return true;
 }
 
-static int fillBasin(std::array<std::array<int, WIDTH>, HEIGHT>& heights, int r, int c)
+static int fillBasin(HeightMap& heights, int r, int c)
 {
     int size = 0;
 

@@ -1,8 +1,6 @@
 // Advent of Code 2021
 // Day 13
 
-#include <nlohmann/json.hpp>
-
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -17,13 +15,15 @@
 #include <sstream>
 #include <vector>
 
-#include "common/expect.h"
+#include <nlohmann/json.hpp>
 
-#define PART    1
+#include "common/expect.h"
+#include "common/load.h"
+#include "common/setup.h"
 
 using json = nlohmann::json;
 
-static char constexpr FILE_NAME[] = "day13-input.txt";
+static int constexpr DAY = 13;
 static char constexpr DOT = '#';
 struct Point
 {
@@ -36,7 +36,6 @@ void to_json(json& j, Point const& p)
 }
 using Paper = std::vector<std::string>;
 
-static void loadInput(char const* name, std::vector<std::string> & lines);
 static void drawPaper(Paper const& paper);
 static void fold(Paper& paper, Point const& p);
 static int countDots(Paper const& paper);
@@ -52,11 +51,15 @@ static int width, height;
 
 int main(int argc, char** argv)
 {
+    std::string inputPath;
+    int part;
+
+    setup::parseCommandLine(argc, argv, DAY, &inputPath, &part);
+    setup::printBanner(DAY, part);
+
     static std::vector<Point> points;
 
-    // Load the input
-    std::vector<std::string> lines;
-    loadInput(FILE_NAME, lines);
+    std::vector<std::string> lines = load::lines(inputPath);
 
     // Load dots
     int i = 0;
@@ -64,6 +67,7 @@ int main(int argc, char** argv)
     {
         int r, c;
 
+        // Look for empty line separating dots and folds
         if (lines[i].empty())
         {
             ++i;
@@ -75,8 +79,6 @@ int main(int argc, char** argv)
         if (lineStream.fail())
             break;
 
-//        minC = std::min(x, minC);
-//        minR = std::min(y, minR);
         maxC = std::max(c, maxC);
         maxR = std::max(r, maxR);
 
@@ -117,52 +119,35 @@ int main(int argc, char** argv)
     paper.reserve(height);
     for (int i = 0; i < height; ++i)
     {
-        paper.push_back(std::string(width, '.'));
+        paper.push_back(std::string(width, ' '));
     }
 
     // Place the dots
     for (auto const& p : points)
         paper[p.r][p.c] = DOT;
 
-//    drawPaper(paper);
-//    std::cerr << json(folds) << std::endl;
+    if (part == 1)
+    {
+        fold(paper, folds[0]);
+        std::cout << "Answer: " << countDots(paper) << std::endl;
+    }
+    else
+    {
+        for (auto const & f : folds)
+            fold(paper, f);
 
-    // Now fold
-    for (auto const & f : folds)
-        fold(paper, f);
-
-    drawPaper(paper);
-
-    std::cout << "Number of dots is " << countDots(paper) << std::endl;
+        drawPaper(paper);
+    }
 
     return 0;
 }
 
-static void loadInput(char const * name, std::vector<std::string>& lines)
-{
-    std::ifstream input(name);
-    if (!input.is_open())
-    {
-        std::cerr << "Unable to open for reading '" << name << "'" << std::endl;
-        exit(1);
-    }
-
-    while (!input.fail())
-    {
-        // Read a line
-        std::string line;
-        std::getline(input, line);
-        if (input.fail())
-            break;
-        lines.emplace_back(line);
-    }
-}
-
 static void drawPaper(Paper const& paper)
 {
+    std::cout << std::endl;
     for (auto const& row : paper)
     {
-        std::cerr << row << std::endl;
+        std::cout << ' ' << row << std::endl;
     }
 }
 
@@ -170,7 +155,6 @@ static void fold(Paper& paper, Point const& p)
 {
     if (p.r == 0)
     {
-//        std::cerr << "fold along x=" << p.c << std::endl;
         if (p.c < width / 2)
             throw std::runtime_error("fold is less than half");
         for (int c = 1; c < width - p.c; ++c)
@@ -187,7 +171,6 @@ static void fold(Paper& paper, Point const& p)
     }
     else if (p.c == 0)
     {
-//        std::cerr << "fold along y=" << p.r << std::endl;
         if (p.r < height / 2)
             throw std::runtime_error("fold is less than half");
         for (int r = 1; r < height - p.r; ++r)
