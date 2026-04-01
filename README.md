@@ -166,35 +166,33 @@ Note: *Part 1 is `day22-1.cpp` and part 2 is implemented in `day22-2.cpp`.*
 
 No code is written for day 24. The solution is found only by analysis of the input.
 
-The ALU uses `* 26`, `/ 26`, and `% 26` to manipulate base-26 numbers, represented here as a big-endian vector of digits.
-
+The ALU uses `* 26`, `/ 26`, and `% 26` to manipulate base-26 numbers, represented here as a little-endian vector of digits.
 
 The processing of each of the model number digits is similar. One of the following functions is executed for each model digit, *d_n*. The function is selected by hard-coded constants (not shown). *z_n* is the value of the Z register after processing *d_n*. The constants *a_n*, and *b_n* are hard-coded in the input.
 
-  - `z_n = [z_n-1 | d_n + b_n]`
-  - `z_n = (z_n-1 + a_n != d_n) ? [z_n-1 >> 1 | d_n + b_n] : z_n-1 >> 1`
+  - `z_n = [d_n + b_n | z_n-1]`
+  - `z_n = (z_n-1[0] + a_n != d_n) ? [d_n + b_n | z_n-1[1..]] : z_n-1[1..]`
 
 As a result, there are 7 model number digits that increase the number of digits in *z_n* and 7 that either reduce the number of digits or keep it the same.
 
-
 ```
 z_01 = [d_01 + 13]
-z_02 = [z_01 | d_02 + 10]     
-z_03 = [z_02 | d_03 +  3]     
-z_04 = (z_03[0] - 11 != d_04) ? [z_03 >> 1 | d_04 +  1] : z_03 >> 1
-z_05 = [z_04 | d_05 +  9]     
-z_06 = (z_05[0] -  4 != d_06) ? [z_05 >> 1 | d_06 +  3] : z_05 >> 1
-z_07 = [z_06 | d_07 +  5]     
-z_08 = [z_07 | d_08 +  1]     
-z_09 = [z_08 | d_09 +  0]     
-z_10 = (z_09[0] -  2 != d_10) ? [z_09 >> 1 | d_10 + 13] : z_09 >> 1
-z_11 = (z_10[0] -  5 != d_11) ? [z_10 >> 1 | d_11 +  7] : z_10 >> 1
-z_12 = (z_11[0] - 11 != d_12) ? [z_11 >> 1 | d_12 + 15] : z_11 >> 1
-z_13 = (z_12[0] - 13 != d_13) ? [z_12 >> 1 | d_13 + 12] : z_12 >> 1
-z_14 = (z_13[0] - 10 != d_14) ? [z_13 >> 1 | d_14 +  8] : z_13 >> 1
+z_02 = [d_02 + 10 | z_01]     
+z_03 = [d_03 +  3 | z_02]     
+z_04 = (z_03[0] - 11 != d_04) ? [d_04 +  1 | z_03[1..]] : z_03[1..]
+z_05 = [d_05 +  9 | z_04]     
+z_06 = (z_05[0] -  4 != d_06) ? [d_06 +  3 | z_05[1..]] : z_05[1..]
+z_07 = [d_07 +  5 | z_06]     
+z_08 = [d_08 +  1 | z_07]     
+z_09 = [d_09 +  0 | z_08]     
+z_10 = (z_09[0] -  2 != d_10) ? [d_10 + 13 | z_09[1..]] : z_09[1..]
+z_11 = (z_10[0] -  5 != d_11) ? [d_11 +  7 | z_10[1..]] : z_10[1..]
+z_12 = (z_11[0] - 11 != d_12) ? [d_12 + 15 | z_11[1..]] : z_11[1..]
+z_13 = (z_12[0] - 13 != d_13) ? [d_13 + 12 | z_12[1..]] : z_12[1..]
+z_14 = (z_13[0] - 10 != d_14) ? [d_14 +  8 | z_13[1..]] : z_13[1..]
 ```
 
-In order for the final value in the Z register, *z14*,  to be 0, all functions that can reduce the number of digits must do so, and all conditions must be false.
+The solution requires the final value in the Z register, *z_14*, to be 0. Since *z_14* cannot have a single digit with a value of 0, it must have no digits (which is the same as a  value of 0). Thus, all conditions must be false so that all functions that can reduce the number of digits do so.
 
 ```
 z_14 =
